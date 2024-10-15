@@ -46,7 +46,7 @@ jobs:
       uses: azure/aci-deploy@v1
       with:
         location: eastus
-        name: flask-estructraa
+        name: flask-estructra
         resource-group: aplicada
         image: ${{ secrets.ACR_NAME }}/${{ env.REPO_NAME }}:${{ github.sha }}
         dns-name-label: flask-estructura-${{ github.run_id }}-${{ github.run_attempt }}
