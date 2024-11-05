@@ -1,10 +1,74 @@
 from flask import Flask
-from flask_cors import CORS
+from flask_marshmallow import Marshmallow
+import os
+import logging
+from app.config import config
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry._logs import set_logger_provider
+from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry import trace
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
+from dotenv import load_dotenv
 
-def create_app():
+# Cargar las variables de entorno desde el archivo .env
+load_dotenv()
+
+# Depuración: imprimir la cadena de conexión
+connection_string = os.getenv('CONNECTION_STRING')
+# print(f"CONNECTION_STRING: {connection_string}")
+
+ma = Marshmallow()
+
+logger_provider = LoggerProvider()
+set_logger_provider(logger_provider)
+exporter = AzureMonitorLogExporter(connection_string=connection_string)
+logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
+
+# Configuración del manejador de registros y configuración del nivel de registro
+handler = LoggingHandler()
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+logger.setLevel(logging.NOTSET)
+
+def create_app() -> None:
+    app_context = os.getenv('FLASK_CONTEXT')
     app = Flask(__name__)
-    CORS(app)
-    from app.resources import helloWorld
-    app.register_blueprint(helloWorld.hello_world, url_prefix='/api/v1')
+    f = config.factory(app_context if app_context else 'development')
+    app.config.from_object(f)
+    
+    # Asegúrate de que la cadena de conexión se pase correctamente
+    app.config['CONNECTION_STRING'] = connection_string
 
+    # Configuración del proveedor de trazas para OpenTelemetry
+    tracer_provider = TracerProvider(
+        resource=Resource.create({SERVICE_NAME: app.config['OTEL_SERVICE_NAME']})
+    )
+    trace.set_tracer_provider(tracer_provider)
+
+    # Habilitar la instrumentación de trazas para la biblioteca Flask
+    FlaskInstrumentor().instrument_app(app)
+
+    RequestsInstrumentor().instrument()
+
+    trace_exporter = AzureMonitorTraceExporter(connection_string=app.config['CONNECTION_STRING'])
+    trace.get_tracer_provider().add_span_processor(
+        BatchSpanProcessor(trace_exporter)
+    )
+
+    ma.init_app(app)
+    
+    # Importar y registrar el blueprint hello_world
+    from app.resources.helloWorld import hello_world
+    app.register_blueprint(hello_world, url_prefix='/api/v1')
+
+    @app.shell_context_processor    
+    def ctx():
+        return {"app": app}
+    
     return app
