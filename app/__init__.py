@@ -1,14 +1,13 @@
-# app/__init__.py
-from dotenv import load_dotenv
-import os
 import logging
 from flask import Flask
 from flask_marshmallow import Marshmallow
+import os
 from app.config import config
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry._logs import set_logger_provider
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -17,23 +16,11 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
 
-# Cargar el archivo .env
-load_dotenv()
-
-# Obtener la cadena de conexión
-connection_string = os.getenv('CONNECTION_STRING')
-
-# Depuración
-if connection_string:
-    print("CONNECTION_STRING cargada correctamente.")
-else:
-    print("Error: CONNECTION_STRING no se cargó.")
-
 ma = Marshmallow()
 
 logger_provider = LoggerProvider()
 set_logger_provider(logger_provider)
-exporter = AzureMonitorLogExporter(connection_string=connection_string)
+exporter = AzureMonitorLogExporter(connection_string=os.getenv('CONNECTION_STRING'))
 logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
 
 # Configuración del manejador de registros y configuración del nivel de registro
@@ -48,8 +35,7 @@ def create_app() -> Flask:
     f = config.factory(app_context if app_context else 'development')
     app.config.from_object(f)
     
-    # Asegúrate de que la cadena de conexión se pase correctamente
-    app.config['CONNECTION_STRING'] = connection_string
+    exporter.from_connection_string(app.config['CONNECTION_STRING'])
 
     # Configuración del proveedor de trazas para OpenTelemetry
     tracer_provider = TracerProvider(
@@ -59,6 +45,7 @@ def create_app() -> Flask:
 
     # Habilitar la instrumentación de trazas para la biblioteca Flask
     FlaskInstrumentor().instrument_app(app)
+
     RequestsInstrumentor().instrument()
 
     trace_exporter = AzureMonitorTraceExporter(connection_string=app.config['CONNECTION_STRING'])
