@@ -47,7 +47,7 @@ jobs:
         acrUsername: ${{ secrets.REGISTRY_USERNAME }}
         acrPassword: ${{ secrets.REGISTRY_PASSWORD }}
         location: eastus
-        containerAppName: recurso-aplicada
+        containerAppName: flask-estructura
         resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
         containerAppEnvironment: flask-estructura-env
         imageToDeploy: ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
@@ -59,7 +59,7 @@ jobs:
       id: get_url
       run: |
         URL=$(az containerapp show \
-          --name recurso-aplicada \
+          --name flask-estructura \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
           --query "properties.configuration.ingress.fqdn" -o tsv)
         echo "URL=https://$URL" >> $GITHUB_ENV
