@@ -1,12 +1,13 @@
+import logging
 from flask import Flask
 from flask_marshmallow import Marshmallow
 import os
-import logging
 from app.config import config
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry._logs import set_logger_provider
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -14,20 +15,12 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
-from dotenv import load_dotenv
-
-# Cargar las variables de entorno desde el archivo .env
-load_dotenv()
-
-# Depuración: imprimir la cadena de conexión
-connection_string = os.getenv('CONNECTION_STRING')
-# print(f"CONNECTION_STRING: {connection_string}")
 
 ma = Marshmallow()
 
 logger_provider = LoggerProvider()
 set_logger_provider(logger_provider)
-exporter = AzureMonitorLogExporter(connection_string=connection_string)
+exporter = AzureMonitorLogExporter(connection_string=os.getenv('CONNECTION_STRING'))
 logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
 
 # Configuración del manejador de registros y configuración del nivel de registro
@@ -36,14 +29,13 @@ logger = logging.getLogger(__name__)
 logger.addHandler(handler)
 logger.setLevel(logging.NOTSET)
 
-def create_app() -> None:
+def create_app() -> Flask:
     app_context = os.getenv('FLASK_CONTEXT')
     app = Flask(__name__)
     f = config.factory(app_context if app_context else 'development')
     app.config.from_object(f)
     
-    # Asegúrate de que la cadena de conexión se pase correctamente
-    app.config['CONNECTION_STRING'] = connection_string
+    exporter.from_connection_string(app.config['CONNECTION_STRING'])
 
     # Configuración del proveedor de trazas para OpenTelemetry
     tracer_provider = TracerProvider(
@@ -62,10 +54,6 @@ def create_app() -> None:
     )
 
     ma.init_app(app)
-    
-    # Importar y registrar el blueprint hello_world
-    from app.resources.helloWorld import hello_world
-    app.register_blueprint(hello_world, url_prefix='/api/v1')
 
     @app.shell_context_processor    
     def ctx():
