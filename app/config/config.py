@@ -20,9 +20,9 @@ class Config(object):
     # Azure Monitor Configuration
     CONNECTION_STRING = os.environ.get('CONNECTION_STRING')
     if not CONNECTION_STRING:
-        logger.warning("CONNECTION_STRING no está configurada. Algunas funcionalidades podrían no estar disponibles.")
+        logger.warning("CONNECTION_STRING noo está configurada. Algunas funcionalidades podrían no estar disponibles.")
     
-    OTEL_SERVICE_NAME = "recurso-aplicada"
+    OTEL_SERVICE_NAME = "aplicada"
     
     APISPEC_SPEC = APISpec(
         title='Estructura Flask API', 
@@ -57,21 +57,21 @@ class TestConfig(Config):
     CACHE_REDIS_PORT = os.environ.get('REDIS_PORT')
     CACHE_REDIS_DB = os.environ.get('REDIS_DB')
     CACHE_REDIS_PASSWORD = os.environ.get('REDIS_PASSWORD')
-    OTEL_SERVICE_NAME = "recurso-aplicada-test"
+    OTEL_SERVICE_NAME = "aplicada-test"
 
 class DevelopmentConfig(Config):
     TESTING = True
     DEBUG = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URI')
-    OTEL_SERVICE_NAME = "recurso-aplicada-dev"
+    OTEL_SERVICE_NAME = "aplicada-dev"
         
 class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
     SQLALCHEMY_RECORD_QUERIES = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('PROD_DATABASE_URI')
-    OTEL_SERVICE_NAME = "recurso-aplicada-prod"
+    OTEL_SERVICE_NAME = "aplicada-prod"
     
     @classmethod
     def init_app(cls, app):
