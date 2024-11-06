@@ -64,15 +64,15 @@ jobs:
           --query "properties.configuration.ingress.fqdn" -o tsv)
         echo "URL=https://$URL" >> $GITHUB_ENV
         echo "App URL is https://$URL"
-    
+
     - name: 'Wait for deployment to stabilize'
       run: sleep 30
 
     - name: 'Check health endpoint'
       run: |
-        echo "Checking health at ${URL}/healthcheck"
+        echo "Checking health at $URL/healthcheck"
         for i in {1..5}; do
-          if curl --fail "${URL}/healthcheck"; then
+          if curl --fail "$URL/healthcheck"; then
             echo "Health check passed!"
             exit 0
           else
@@ -84,7 +84,7 @@ jobs:
         echo "Health check failed after 5 attempts."
         exit 1
       env:
-        URL: ${{ env.URL }}
+        URL: ${{ steps.get_url.outputs.URL }}
     
     - name: 'Logout from Azure'
       run: |
